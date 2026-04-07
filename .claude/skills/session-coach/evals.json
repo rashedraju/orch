@@ -1,0 +1,120 @@
+[
+  {
+    "id": "eval-bug-simple",
+    "description": "Simple bug fix — should trigger QUICK mode, not full plan",
+    "prompt": "There's a typo in the button label on the login page. It says 'Singin' instead of 'Sign in'. Fix it.",
+    "assertions": [
+      "Output uses quick mode (no full 7-section plan)",
+      "Output does NOT include a Skill Map table",
+      "Output does NOT include a Resume Prompt section",
+      "Output references the correct file or component to edit",
+      "Total output is concise — under 20 lines"
+    ]
+  },
+  {
+    "id": "eval-bug-complex",
+    "description": "Complex bug — should trigger full plan with systematic-debugging",
+    "prompt": "Users are reporting that notifications aren't being delivered in real-time. Sometimes they appear after a 10-minute delay, sometimes never. This affects all users on the Pro plan. Help me plan how to debug and fix this.",
+    "assertions": [
+      "Output uses FULL plan format with all 5 sections",
+      "Step 1 uses systematic-debugging skill",
+      "Plan mode is specified for investigation steps",
+      "Pre-flight check mentions clarifying questions (queue driver? broadcast config?)",
+      "Token safety note is present",
+      "Resume prompt is included"
+    ]
+  },
+  {
+    "id": "eval-new-feature",
+    "description": "New feature — should trigger full plan with brainstorming → writing-plans flow",
+    "prompt": "I need to add a real-time notification bell to the Laravel app. Users should see a badge count and be able to click to see recent notifications.",
+    "assertions": [
+      "Output uses FULL plan format",
+      "Step sequence includes brainstorming, then writing-plans, then executing-plans",
+      "laravel-boost MCP failure is flagged with laravel-specialist fallback",
+      "Frontend steps reference ui-ux-pro-max and tailwindcss-development",
+      "TypeScript step ends with ts-check",
+      "Session end sequence is present: timeline-report → finishing-a-development-branch → commit-commands"
+    ]
+  },
+  {
+    "id": "eval-refactor",
+    "description": "Refactor task — should use git worktrees for isolation",
+    "prompt": "I want to refactor the user authentication module to use Laravel Sanctum instead of the current session-based approach. Plan this out for me.",
+    "assertions": [
+      "Output uses FULL plan format",
+      "using-git-worktrees skill is recommended for isolation",
+      "requesting-code-review appears after implementation",
+      "laravel-specialist and php-pro are included",
+      "A STOP checkpoint is present (this is a large refactor)",
+      "Resume prompt is included"
+    ]
+  },
+  {
+    "id": "eval-ui-task",
+    "description": "UI-only task — should route to ui-ux-pro-max + frontend-design",
+    "prompt": "The dashboard looks outdated. Redesign it to be more modern — better cards, cleaner typography, a sidebar nav.",
+    "assertions": [
+      "ui-ux-pro-max is the lead skill",
+      "frontend-design and tailwindcss-development are included",
+      "Skill map table is present",
+      "skill-creator is mentioned as a check (should we build a project UI skill?)",
+      "ts-check appears at the end of the implementation phase"
+    ]
+  },
+  {
+    "id": "eval-spec-file",
+    "description": "Spec file provided — should read and plan from it",
+    "prompt": "Plan this feature: /specs/payment-retry.md",
+    "assertions": [
+      "Output acknowledges reading the spec file",
+      "Task summary reflects spec content (or asks user to paste if path isn't readable)",
+      "Full plan format is used",
+      "Pre-flight check lists any ambiguities from the spec"
+    ]
+  },
+  {
+    "id": "eval-complexity-gate-trivial",
+    "description": "Trivial 1-step task — complexity gate must fire",
+    "prompt": "Update the copyright year in the footer from 2024 to 2025.",
+    "assertions": [
+      "Output does NOT use the full 7-section plan format",
+      "Response is short — a single prompt or 2-3 lines of guidance",
+      "No Skill Map table",
+      "No Resume Prompt section"
+    ]
+  },
+  {
+    "id": "eval-init-fresh",
+    "description": "First-time setup for a new project — should trigger Phase 0 init and Phase 1 tool discovery",
+    "prompt": "I'm starting a new project. It's a React + Supabase app with TypeScript. Set up session coach for it and help me get going.",
+    "assertions": [
+      "Phase 0 init command is shown (scripts/init_setup.py)",
+      "Phase 1 discovery is run and shows recommendations including typescript-lsp, supabase, and frontend-design",
+      "User is asked to confirm which tools to install before any install commands are issued",
+      "After the install phase, session planning begins (session.md is created or referenced)"
+    ]
+  },
+  {
+    "id": "eval-init-stale",
+    "description": "User describes a task — skill should check setup freshness before planning",
+    "prompt": "I want to plan adding a payment retry feature to my app. The system should retry failed payments up to 3 times with exponential backoff, notify the user on final failure.",
+    "assertions": [
+      "Skill checks whether setup.md is current before proceeding to planning",
+      "Task is classified as Standard or Complex (not Quick) given multi-step nature",
+      "session.md is created with concrete steps for the payment retry feature",
+      "Step 1 prompt is copy-paste ready"
+    ]
+  },
+  {
+    "id": "eval-install-approval",
+    "description": "User asks to install recommended tools — must show table and wait for confirmation before any installs",
+    "prompt": "I have a TypeScript project with Next.js and Tailwind. What tools should I install for Claude Code? Install the ones that make sense.",
+    "assertions": [
+      "A recommendations table is shown (plugin, reason, priority, status columns)",
+      "typescript-lsp and frontend-design appear in the table",
+      "User is explicitly asked which tools to approve before install commands are referenced",
+      "install_plugin.py commands are only shown after requesting user confirmation — not run silently"
+    ]
+  }
+]
