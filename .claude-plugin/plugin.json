@@ -1,0 +1,8 @@
+{
+  "name": "session-coach",
+  "description": "Ultimate session coach for AI coding agents. Auto-initializes your setup by scanning installed plugins, MCPs, skills, and project tech stack. Handles fuzzy prompts intelligently, monitors plan state across compactions, and manages full project workflow from first idea to final commit.",
+  "author": {
+    "name": "Rashed",
+    "email": ""
+  }
+}

@@ -4,37 +4,68 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Purpose
 
-This repository contains the **session-coach** Claude Code skill — a session strategist skill that plans, sequences, and advises on Claude Code task execution. It lives in `.claude/skills/session-coach/`.
+This repository is the **session-coach plugin** — a multi-platform Claude Code plugin that acts as an autonomous session coach for AI coding agents. It auto-initializes setup, handles fuzzy prompts, preserves plan state across compactions, and manages full project workflow.
 
-## Skill Architecture
+## Plugin Architecture
 
-The skill has three core files:
+The repo root is the plugin root. Key directories:
 
-- **`.claude/skills/session-coach/SKILL.md`** — the skill definition loaded by the `Skill` tool. Contains the full session coach logic: complexity gate, living plan format, replan trigger, output behaviour, planning rules, and prompt writing guidelines.
-- **`.claude/skills/session-coach/evals.json`** — evaluation test cases (7 scenarios) used to verify the skill behaves correctly. Each eval has a `prompt` and `assertions` array.
-- **`.claude/skills/session-coach/references/setup.md`** — user-specific setup reference (models, MCPs, plugins, agents, hooks). Loaded by the skill when verifying tool availability.
+```
+skills/session-coach/   — Main orchestrator skill (complexity gate, planning, routing)
+skills/coach-planner/   — Living plan management (session.md format, replan logic)
+skills/coach-monitor/   — Token/context health monitoring
+hooks/                  — Automation layer (4 hooks, Python)
+.claude-plugin/         — Plugin metadata
+```
+
+The `.claude/skills/session-coach/` directory is an older copy kept for local dev testing. The canonical source is `skills/`.
+
+## Skill Responsibilities
+
+**`session-coach`** — Orchestrator. Complexity gate, phase detection, fuzzy vs concrete routing, special case routing, prompt writing. Delegates plan work to `coach-planner` and health monitoring to `coach-monitor`.
+
+**`coach-planner`** — Everything about `session.md`: format, step states, replan procedure, token safety, mode rules, session end sequence.
+
+**`coach-monitor`** — Token budget guidelines, when to run `/compact`, when to start a new session, context health signals, transition checklist.
+
+## Hook Architecture
+
+Four hooks run automatically in Claude Code (no user action needed):
+
+| Hook | File | What it does |
+|------|------|-------------|
+| `SessionStart` | `hooks/session-start.py` | Runs `init_setup.py` if stale, injects setup summary as context |
+| `UserPromptSubmit` | `hooks/prompt-submit.py` | Detects fuzzy prompts, injects resume reminder if plan active |
+| `Stop` | `hooks/stop-hook.py` | Warns if stopping mid-plan |
+| `PreCompact` | `hooks/pre-compact.py` | Preserves plan state before compaction |
+
+Hooks use platform detection to output the correct JSON format for Claude Code, Cursor, and Copilot CLI.
+
+## Scripts (in `skills/session-coach/scripts/`)
+
+- **`init_setup.py`** — Scans `~/.claude/` config + project tech stack → writes `references/setup.md`. Respects 7-day staleness, `--force` to override.
+- **`discover_tools.py`** — Matches project stack to marketplace plugins → ranked recommendations table.
+- **`install_plugin.py`** — Downloads + registers a plugin (handles local/url/git-subdir source types).
 
 ## Key Design Concepts
 
-**Complexity Gate** — Every invocation must classify the task as Quick / Standard / Complex before any output. Quick tasks (≤2 steps, obvious fix) get a single prompt block only — no `session.md`. Standard/Complex get a living plan.
+**Complexity Gate** — Quick tasks (≤2 steps) get a single prompt, no session.md. Standard/Complex get the living plan.
 
-**Living Plan** (`.claude/session.md`) — Written to the *project root* where the user is working (not this repo). Never pre-generate more than 2 steps ahead. Steps have states: `[DONE]`, `[NEXT]`, `[STUB]`, `[SKIPPED]`. Exactly one `[NEXT]` at all times.
+**Living Plan** (`.claude/session.md`) — Written to the user's project root. Exactly one `[NEXT]` step at all times. Never plan more than 2 steps ahead.
 
-**Replan Trigger** — Replanning fires only when the user explicitly signals completion ("step done", "move to next step", etc.). It advances exactly one step: mark done → append context snapshot → write new `[NEXT]` → update next stub. Cost: ~300–500 tokens by design.
+**Hooks as the automation layer** — hooks handle what can be automated (init, fuzzy detection, plan protection); the skills handle intelligent reasoning when invoked.
 
-**Phase Detection** — Fuzzy start (vague idea) → Step 1 is always Brainstorm. Concrete start (spec exists) → Step 1 is Explore & Orient.
+**Multi-platform** — `hooks/hooks.json` for Claude Code, `hooks/hooks-cursor.json` for Cursor, `AGENTS.md` for Copilot CLI and others.
 
-## Editing the Skill
+## Editing
 
-When modifying `SKILL.md`:
-- The complexity gate table and Quick-tier output format must stay in sync — the gate classifies, the format section defines output for each tier.
-- `references/setup.md` contains user-specific state (MCP status, active plugins). Update it when the user's setup changes, not when editing skill logic.
-- After changes, run the skill against the evals in `evals.json` to verify behaviour hasn't regressed.
+When editing skills: the complexity gate table and Quick-tier output in `session-coach/SKILL.md` must stay in sync. Plan format lives in `coach-planner/SKILL.md` — update it there, not in the main skill.
 
-## Running Evals
+When editing hooks: test each hook by piping sample JSON via stdin, e.g.:
+```bash
+echo '{"cwd": "/tmp", "user_prompt": "i want to add something"}' | python3 hooks/prompt-submit.py
+```
 
-Evals are manual: load each `evals.json` entry's `prompt` into Claude Code with the session-coach skill active, then check each assertion in the `assertions` array. There is no automated test runner.
+## Evals
 
-## Settings
-
-`.claude/settings.json` controls which plugins are enabled for this repo. Currently only `skill-creator` is explicitly enabled.
+`skills/session-coach/evals.json` has 10 test cases (7 original + 3 new for init/install phases). Run manually with the skill-creator eval workflow.
