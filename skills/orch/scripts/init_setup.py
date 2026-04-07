@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Scans Claude Code configuration and project context, then writes (or refreshes)
-references/setup.md in the session-coach skill directory.
+references/setup.md in the orch skill directory.
 
 Usage:
     python scripts/init_setup.py --project-path /path/to/project [--force]
@@ -324,7 +324,7 @@ def build_setup_md(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate session-coach setup reference.")
+    parser = argparse.ArgumentParser(description="Generate orch setup reference.")
     parser.add_argument("--project-path", required=True, help="Root of the user's project to analyze")
     parser.add_argument("--force", action="store_true", help="Regenerate even if setup.md is fresh")
     args = parser.parse_args()

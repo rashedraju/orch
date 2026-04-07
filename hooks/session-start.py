@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SessionStart hook for session-coach plugin.
+SessionStart hook for Orch. plugin.
 
 Runs init_setup.py if setup.md is missing or stale, then injects a compact
 summary of the user's Claude Code configuration into every session automatically.
@@ -13,7 +13,7 @@ from pathlib import Path
 
 _env_root = os.environ.get("CLAUDE_PLUGIN_ROOT") or os.environ.get("CURSOR_PLUGIN_ROOT")
 PLUGIN_ROOT = Path(_env_root) if _env_root else Path(__file__).resolve().parent.parent
-SKILL_DIR = PLUGIN_ROOT / "skills" / "session-coach"
+SKILL_DIR = PLUGIN_ROOT / "skills" / "orch"
 INIT_SCRIPT = SKILL_DIR / "scripts" / "init_setup.py"
 SETUP_MD = SKILL_DIR / "references" / "setup.md"
 
@@ -94,13 +94,13 @@ def main():
         sys.exit(0)
 
     context = (
-        "<session-coach-context>\n"
-        "Session Coach is active. Your Claude Code setup:\n\n"
+        "<orch-context>\n"
+        "Orch. is active. Your Claude Code setup:\n\n"
         f"{summary}\n\n"
-        "Use the `session-coach` skill when planning tasks. "
-        "Use `coach-planner` for living plan management. "
-        "Use `coach-monitor` for token/context health guidance.\n"
-        "</session-coach-context>"
+        "Use the `orch` skill when planning tasks. "
+        "Use `orch-planner` for living plan management. "
+        "Use `orch-monitor` for token/context health guidance.\n"
+        "</orch-context>"
     )
 
     emit_context(context)

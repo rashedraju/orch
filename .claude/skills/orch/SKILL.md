@@ -1,5 +1,5 @@
 ---
-name: session-coach
+name: orch
 description: Acts as a Claude Code session strategist and execution planner. Use this skill whenever the user describes a task, feature, bug, refactor, or provides a spec file — and wants a step-by-step execution guide with exact prompts, modes, skill/agent/MCP recommendations, token safety checkpoints, and resume prompts. Trigger when the user says things like "plan my session", "how do I approach this task", "give me a session plan", "coach me through this", "what's my execution guide for X", or shares a .md spec. Also trigger when the user says "step done", "brainstorm complete", "move to next step", or any signal that a step just finished — this means a replan is needed. Trigger when the user asks "what prompts should I use", "which skills do I need", or "how do I start this feature" in a Claude Code context. Use proactively when a task description is given and a structured plan would genuinely help — but apply the complexity gate first.
 ---
 

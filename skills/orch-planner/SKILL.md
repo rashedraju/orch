@@ -1,6 +1,6 @@
 ---
-name: coach-planner
-description: Manages the living plan file (.claude/session.md) for the session-coach. Use this skill when you need to create, update, advance, or resume a session plan. Trigger when the user says "step done", "move to next step", "what's my next step", "update the plan", "mark this complete", or when replanning is needed after a phase completes. Also use when reading or writing session.md directly.
+name: orch-planner
+description: Manages the living plan file (.claude/session.md) for Orch. Use this skill when you need to create, update, advance, or resume a session plan. Trigger when the user says "step done", "move to next step", "what's my next step", "update the plan", "mark this complete", or when replanning is needed after a phase completes. Also use when reading or writing session.md directly.
 ---
 
 # Coach Planner
@@ -92,7 +92,7 @@ When the user signals a step is complete ("step done", "that's finished", "move 
 ## Token Safety Rules
 
 - Flag **🛑 STOP** when approaching ~70% token usage in a step
-- Recommend `/compact` before large file-editing phases (see `coach-monitor` skill)
+- Recommend `/compact` before large file-editing phases (see `orch-monitor` skill)
 - Never plan auto-mode execution with less than 40% usage remaining
 - Each replan should end with a one-line preview of the next stub
 

@@ -1,0 +1,4 @@
+# orch uses Python standard library only — no external packages required.
+# Minimum Python version: 3.8
+#
+# Standard library modules used: json, os, sys, subprocess, pathlib, datetime, re, shutil

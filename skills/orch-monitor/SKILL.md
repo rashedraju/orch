@@ -1,5 +1,5 @@
 ---
-name: coach-monitor
+name: orch-monitor
 description: Monitors session health for token usage, context size, and session transitions. Use this skill when the user asks about token usage, when the session feels heavy or slow, when /compact should be run, or when starting a new session. Trigger on phrases like "should I compact?", "running out of context", "session is getting long", "how's my token usage", "should I start a new session", or when you notice you're approaching context limits.
 ---
 
@@ -35,7 +35,7 @@ Recommend `/compact` when:
 **Before recommending /compact:**
 1. Check if there's an active session plan — the `pre-compact` hook will preserve it automatically
 2. Note any critical facts that may not survive compaction: current file state, uncommitted changes, decisions made this session
-3. Tell the user exactly what to do: "Run `/compact` now — the session-coach hook will preserve your plan state automatically."
+3. Tell the user exactly what to do: "Run `/compact` now — the orch hook will preserve your plan state automatically."
 
 ---
 

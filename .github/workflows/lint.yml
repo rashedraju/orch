@@ -1,0 +1,37 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Syntax check hooks
+        run: |
+          python3 -m py_compile hooks/session-start.py
+          python3 -m py_compile hooks/prompt-submit.py
+          python3 -m py_compile hooks/stop-hook.py
+          python3 -m py_compile hooks/pre-compact.py
+
+      - name: Syntax check scripts
+        run: |
+          python3 -m py_compile skills/orch/scripts/init_setup.py
+          python3 -m py_compile skills/orch/scripts/discover_tools.py
+          python3 -m py_compile skills/orch/scripts/install_plugin.py
+
+      - name: Validate hooks.json
+        run: python3 -c "import json; json.load(open('hooks/hooks.json'))"
+
+      - name: Validate plugin.json
+        run: python3 -c "import json; json.load(open('.claude-plugin/plugin.json'))"

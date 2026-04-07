@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Stop hook for session-coach plugin.
+Stop hook for Orch. plugin.
 
 Checks if an active session plan has incomplete steps before the session ends.
 Injects a warning if stopping mid-plan. Always advisory, never blocks.
@@ -61,7 +61,7 @@ def main():
 
     if plan:
         context = (
-            f"[Session Coach] ⚠️ Active plan has incomplete steps.\n"
+            f"[Orch.] ⚠️ Active plan has incomplete steps.\n"
             f"Task: {plan['task']}\n"
             f"Next step: {plan['next_step']}\n\n"
             "Before ending, consider:\n"

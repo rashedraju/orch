@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PreCompact hook for session-coach plugin.
+PreCompact hook for Orch. plugin.
 
 Extracts the current plan state from session.md and injects a compact
 summary that will survive context compaction, ensuring the session can
@@ -54,7 +54,7 @@ def extract_compact_state(cwd: str) -> str | None:
             snapshot_bullets = bullets[-3:]
 
         parts = [
-            f"SESSION COACH STATE (preserved across compaction)",
+            f"ORCH STATE (preserved across compaction)",
             f"Task: {task} | Status: {status}",
             f"Next: Step {step_num} — {step_name}",
         ]

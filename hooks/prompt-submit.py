@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-UserPromptSubmit hook for session-coach plugin.
+UserPromptSubmit hook for Orch. plugin.
 
 Detects fuzzy/vague prompts and injects a coaching nudge.
 Also injects a resume reminder if an active session plan exists.
@@ -79,15 +79,15 @@ def main():
     active_step = get_active_plan_step(cwd)
     if active_step:
         notes.append(
-            f"[Session Coach] Active plan detected. Current step: **{active_step}**. "
+            f"[Orch.] Active plan detected. Current step: **{active_step}**. "
             "Say 'resume session' to pick up where you left off, or continue with your new prompt."
         )
 
     # Check for fuzzy prompt
     if prompt and is_fuzzy(prompt) and not active_step:
         notes.append(
-            "[Session Coach] This looks like a vague prompt. "
-            "For best results, try: \"Use session-coach to plan this: " + prompt + "\""
+            "[Orch.] This looks like a vague prompt. "
+            "For best results, try: \"Use orch to plan this: " + prompt + "\""
         )
 
     if notes:

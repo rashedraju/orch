@@ -1,8 +1,10 @@
 {
-  "name": "session-coach",
+  "name": "orch",
+  "version": "1.0.0",
   "description": "Ultimate session coach for AI coding agents. Auto-initializes your setup by scanning installed plugins, MCPs, skills, and project tech stack. Handles fuzzy prompts intelligently, monitors plan state across compactions, and manages full project workflow from first idea to final commit.",
+  "license": "MIT",
+  "homepage": "https://github.com/rashed/orch",
   "author": {
-    "name": "Rashed",
-    "email": ""
+    "name": "Rashed"
   }
 }

@@ -1,0 +1,22 @@
+# Local Claude Code dev config (auto-generated or personal)
+.claude/settings.local.json
+.claude/skills/orch/references/setup.md
+
+# Auto-generated setup reference (regenerated on first run)
+skills/orch/references/setup.md
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Environment files
+.env
+*.env
