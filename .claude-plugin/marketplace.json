@@ -1,0 +1,27 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "orch",
+  "description": "Orch. plugin marketplace — autonomous session coach for AI coding agents",
+  "owner": {
+    "name": "rashedraju"
+  },
+  "plugins": [
+    {
+      "name": "orch",
+      "description": "Autonomous session coach for AI coding agents. Auto-initializes setup, detects skill gaps, handles fuzzy prompts intelligently, preserves plan state across compactions, and manages full project workflow from first idea to final commit.",
+      "version": "1.0.0",
+      "category": "development",
+      "author": {
+        "name": "rashedraju"
+      },
+      "source": {
+        "source": "github",
+        "repo": "rashedraju/orch"
+      },
+      "homepage": "https://github.com/rashedraju/orch",
+      "repository": "https://github.com/rashedraju/orch",
+      "license": "MIT",
+      "keywords": ["session-coach", "planning", "orchestration", "workflow", "productivity"]
+    }
+  ]
+}
