@@ -3,8 +3,16 @@
   "version": "1.0.0",
   "description": "Ultimate session coach for AI coding agents. Auto-initializes your setup by scanning installed plugins, MCPs, skills, and project tech stack. Handles fuzzy prompts intelligently, monitors plan state across compactions, and manages full project workflow from first idea to final commit.",
   "license": "MIT",
-  "homepage": "https://github.com/rashed/orch",
+  "homepage": "https://github.com/rashedraju/orch",
+  "repository": "https://github.com/rashedraju/orch",
+  "category": "development",
   "author": {
-    "name": "Rashed"
-  }
+    "name": "rashedraju"
+  },
+  "keywords": ["session-coach", "planning", "orchestration", "workflow", "productivity"],
+  "skills": [
+    "./skills/orch",
+    "./skills/orch-planner",
+    "./skills/orch-monitor"
+  ]
 }
