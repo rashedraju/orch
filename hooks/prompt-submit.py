@@ -6,6 +6,8 @@ Detects fuzzy/vague prompts and injects a coaching nudge.
 Also injects a resume reminder if an active session plan exists.
 Always non-blocking (exit 0).
 """
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -18,6 +20,110 @@ FUZZY_STARTERS = (
 )
 
 FUZZY_KEYWORDS = {"want", "add", "make", "help", "something", "maybe", "sort of", "kind of"}
+
+
+def get_enabled_skill_names(claude_dir: Path | None = None) -> set[str] | None:
+    """Return skill names available from all currently-enabled plugins.
+
+    Returns None if config files cannot be read (caller should skip gap detection).
+    Returns an empty set if files are readable but no skills are found.
+    """
+    if claude_dir is None:
+        claude_dir = Path.home() / ".claude"
+
+    try:
+        settings = json.loads((claude_dir / "settings.json").read_text())
+        enabled = {k for k, v in settings.get("enabledPlugins", {}).items() if v}
+    except Exception:
+        return None  # Can't read config — skip gap detection to avoid false positives
+
+    try:
+        installed_data = json.loads(
+            (claude_dir / "plugins" / "installed_plugins.json").read_text()
+        )
+        plugins = installed_data.get("plugins", {})
+    except Exception:
+        return None  # Can't read install registry — skip gap detection
+
+    skills: set[str] = set()
+    for plugin_key, plugin_data in plugins.items():
+        plugin_name = plugin_key.split("@")[0]
+        if plugin_name not in enabled:
+            continue
+        install_path = plugin_data.get("installPath", "")
+        if not install_path:
+            continue
+        skills_dir = Path(install_path) / "skills"
+        if skills_dir.is_dir():
+            for skill_dir in skills_dir.iterdir():
+                if (skill_dir / "SKILL.md").exists():
+                    skills.add(skill_dir.name)
+
+    return skills
+
+
+TASK_SKILL_MAP: dict[str, dict] = {
+    "ui": {
+        "keywords": {
+            "ui", "component", "layout", "design", "frontend",
+            "button", "modal", "form", "page", "view", "interface",
+        },
+        "skills": ["ui-ux-pro-max", "frontend-design"],
+    },
+    "laravel": {
+        "keywords": {
+            "laravel", "php", "blade", "eloquent", "artisan",
+            "migration", "controller",
+        },
+        "skills": ["laravel-specialist", "php-pro"],
+    },
+    "typescript": {
+        "keywords": {"typescript", "tsc", "type error", "generic", "interface"},
+        "skills": ["ts-check"],
+    },
+    "debugging": {
+        "keywords": {
+            "bug", "error", "failing", "broken", "crash",
+            "exception", "traceback", "debug",
+        },
+        "skills": ["systematic-debugging"],
+    },
+    "refactor": {
+        "keywords": {
+            "refactor", "extract", "clean up", "cleanup",
+            "restructure", "rename",
+        },
+        "skills": ["using-git-worktrees"],
+    },
+}
+
+
+def detect_skill_gaps(prompt: str, enabled_skills: set[str]) -> list[dict]:
+    """Return [{task_type, missing_skills}] for each detected gap."""
+    lower = prompt.lower()
+    gaps = []
+    for task_type, config in TASK_SKILL_MAP.items():
+        if not any(kw in lower for kw in config["keywords"]):
+            continue
+        missing = [s for s in config["skills"] if s not in enabled_skills]
+        if missing:
+            gaps.append({"task_type": task_type, "missing_skills": missing})
+    return gaps
+
+
+def format_gap_notice(gaps: list[dict]) -> str:
+    """Format gap list into a context notice for Orch."""
+    lines = []
+    for gap in gaps:
+        missing_str = ", ".join(f"`{s}`" for s in gap["missing_skills"])
+        lines.append(
+            f"[ORCH] Skill gap detected: task looks like {gap['task_type']} work "
+            f"but {missing_str} is not installed.\n"
+            f"Options: install → `python scripts/install_plugin.py --plugin <name> "
+            f"--marketplace claude-plugins-official` | proceed with fallback | "
+            f"create new skill → invoke `skill-creator`"
+        )
+    return "\n\n".join(lines)
 
 
 def is_fuzzy(prompt: str) -> bool:
@@ -89,6 +195,16 @@ def main():
             "[Orch.] This looks like a vague prompt. "
             "For best results, try: \"Use orch to plan this: " + prompt + "\""
         )
+
+    # Check for skill gaps (skip if config unreadable — avoids false positives)
+    # When skill config is readable, gap detection supersedes the fuzzy nudge
+    if prompt and not active_step:
+        enabled_skills = get_enabled_skill_names()
+        if enabled_skills is not None:
+            notes = [n for n in notes if not n.startswith("[Orch.] This looks like a vague")]
+            gaps = detect_skill_gaps(prompt, enabled_skills)
+            if gaps:
+                notes.append(format_gap_notice(gaps))
 
     if notes:
         emit_context("\n\n".join(notes))
