@@ -129,7 +129,8 @@ orch/
 │   ├── stop-hook.py
 │   └── pre-compact.py
 ├── .claude-plugin/
-│   └── plugin.json         # Plugin metadata
+│   ├── plugin.json         # Plugin metadata
+│   └── marketplace.json    # Marketplace source manifest
 ├── .claude/                # Dev tooling config (skill-creator, commit-commands)
 ├── AGENTS.md               # Manual workflow for non-Claude-Code agents
 └── CLAUDE.md               # Guidance for Claude Code when editing this repo
