@@ -26,20 +26,14 @@ Orch. is a Claude Code plugin that acts as an autonomous session strategist for 
 
 ### Claude Code (recommended — full automation)
 
-```bash
-# From your Claude Code project directory
-python /path/to/orch/skills/orch/scripts/install_plugin.py \
-  --plugin orch \
-  --source /path/to/orch
+Install directly in Claude Code with two commands:
+
+```
+/plugin marketplace add rashedraju/orch
+/plugin install orch@orch
 ```
 
-Or install manually: copy `skills/`, `hooks/`, and `.claude-plugin/` into your `~/.claude/plugins/orch/` directory, then register it in `~/.claude/settings.json`:
-
-```json
-{
-  "plugins": ["orch"]
-}
-```
+Hooks register automatically. Skills (`orch`, `orch-planner`, `orch-monitor`) are immediately available.
 
 ### Cursor
 
@@ -54,7 +48,7 @@ Copy `hooks/hooks-cursor.json` to your project root as `.cursor/hooks.json`. Poi
 
 ### Other agents (Copilot CLI, Aider, Codex, etc.)
 
-See [AGENTS.md](AGENTS.md) for the manual equivalent workflow. No hooks required — just reference the skill files directly in your prompts.
+See [AGENTS.md](AGENTS.md) for the manual equivalent workflow. No hooks required — reference the skill files directly in your prompts.
 
 ---
 
