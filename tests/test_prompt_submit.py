@@ -178,7 +178,7 @@ def test_main_injects_gap_notice_for_ui_prompt(tmp_path):
 
 def test_main_no_gap_notice_when_all_skills_present(tmp_path):
     hook_input = json.dumps({
-        "user_prompt": "I need to build a settings page with a form",
+        "user_prompt": "Build a settings page with a form",
         "cwd": str(tmp_path),
     })
     with patch.object(
@@ -191,5 +191,34 @@ def test_main_no_gap_notice_when_all_skills_present(tmp_path):
                 with pytest.raises(SystemExit):
                     prompt_submit.main()
 
-    # No output printed when no gaps and no active plan
+    # No output printed when no gaps and prompt is not fuzzy
     assert len(captured) == 0
+
+
+def test_main_preserves_fuzzy_notice_when_no_gaps(tmp_path):
+    """Fuzzy nudge should survive when skill config is readable but no gaps found."""
+    hook_input = json.dumps({
+        "user_prompt": "i want to add something",
+        "cwd": str(tmp_path),
+    })
+    # Patch get_enabled_skill_names to return a full set (no gaps for this generic prompt)
+    with patch.object(
+        prompt_submit, "get_enabled_skill_names",
+        return_value={"ui-ux-pro-max", "frontend-design", "writing-plans"},
+    ):
+        with patch("sys.stdin", io.StringIO(hook_input)):
+            captured = []
+            with patch("builtins.print", side_effect=lambda x: captured.append(x)):
+                with pytest.raises(SystemExit):
+                    prompt_submit.main()
+
+    # Fuzzy note should still appear — no gaps were found to supersede it
+    assert len(captured) == 1
+    output = json.loads(captured[0])
+    context = (
+        output.get("hookSpecificOutput", {}).get("additionalContext")
+        or output.get("additionalContext")
+        or output.get("additional_context")
+        or ""
+    )
+    assert "[Orch.] This looks like a vague prompt" in context
