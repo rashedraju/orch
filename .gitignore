@@ -1,3 +1,6 @@
+# Git worktrees (local dev isolation)
+.worktrees/
+
 # Local Claude Code dev config (auto-generated or personal)
 .claude/settings.local.json
 .claude/skills/orch/references/setup.md
