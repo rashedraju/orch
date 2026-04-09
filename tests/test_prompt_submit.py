@@ -2,6 +2,8 @@
 import importlib.util
 import json
 import sys
+import tempfile
+import unittest
 from pathlib import Path
 
 import pytest
@@ -222,3 +224,48 @@ def test_main_preserves_fuzzy_notice_when_no_gaps(tmp_path):
         or ""
     )
     assert "[Orch.] This looks like a vague prompt" in context
+
+
+# ---------------------------------------------------------------------------
+# read_brain_context
+# ---------------------------------------------------------------------------
+
+read_brain_context = prompt_submit.read_brain_context
+
+
+class TestReadBrainContext(unittest.TestCase):
+    def test_returns_none_when_no_brain(self):
+        with tempfile.TemporaryDirectory() as d:
+            result = read_brain_context(d)
+            assert result is None
+
+    def test_returns_context_with_bullets(self):
+        with tempfile.TemporaryDirectory() as d:
+            brain_dir = Path(d) / ".claude" / "orch"
+            brain_dir.mkdir(parents=True)
+            brain_content = (
+                "# Project Brain\n"
+                "<!-- git_head: abc123 -->\n"
+                "<!-- llm_analysis: complete -->\n\n"
+                "## Project Summary\n"
+                "**Name:** my-app\n\n"
+                "## Tech Stack\nPython, Flask\n\n"
+                "## Decisions Log\n"
+                "- Used JWT for auth\n"
+                "<!-- add more decisions here -->\n"
+                "- Postgres for storage\n"
+            )
+            (brain_dir / "brain.md").write_text(brain_content)
+            result = read_brain_context(d)
+            assert result is not None
+            assert result["name"] == "my-app"
+            assert result["stack"] == "Python, Flask"
+            # Real bullets should be present
+            assert any("JWT" in b for b in result["bullets"])
+            assert any("Postgres" in b for b in result["bullets"])
+            # The comment line should NOT appear as a bullet
+            assert not any("add more decisions" in b for b in result["bullets"])
+
+
+if __name__ == "__main__":
+    unittest.main()

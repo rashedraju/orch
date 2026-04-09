@@ -131,19 +131,18 @@ def read_brain_context(cwd: str) -> dict | None:
     if not brain_md.exists():
         return None
     try:
-        import re as _re
         content = brain_md.read_text(encoding='utf-8')
 
-        name_match = _re.search(r"\*\*Name:\*\*\s*(.+)", content)
+        name_match = re.search(r"\*\*Name:\*\*\s*(.+)", content)
         project_name = name_match.group(1).strip() if name_match else Path(cwd).name
 
-        stack_match = _re.search(r"## Tech Stack\n([^\n#]+)", content)
+        stack_match = re.search(r"## Tech Stack\n([^\n#]+)", content)
         tech_str = stack_match.group(1).strip() if stack_match else "unknown"
 
         # Up to 3 context bullets from Decisions Log or Conventions
         bullets: list[str] = []
         for section in ("Decisions Log", "Conventions"):
-            sec_match = _re.search(rf"## {section}\n(.*?)(?=\n## |\Z)", content, _re.DOTALL)
+            sec_match = re.search(rf"## {section}\n(.*?)(?=\n## |\Z)", content, re.DOTALL)
             if sec_match:
                 raw = sec_match.group(1).strip()
                 if raw:
@@ -196,7 +195,7 @@ def get_active_plan_step(cwd: str) -> str | None:
     if not session_md.exists():
         return None
     try:
-        content = session_md.read_text()
+        content = session_md.read_text(encoding='utf-8')
         match = re.search(r"### \[NEXT\] Step \d+ — (.+)", content)
         return match.group(1).strip() if match else None
     except Exception:
