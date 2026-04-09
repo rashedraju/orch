@@ -23,21 +23,86 @@ Key facts (always available):
 
 ---
 
-## Tool Discovery & Installation
+## Intelligence Hub
 
-If setup shows missing required tools, run discovery:
+The project brain lives at `.claude/orch/` in the user's project root:
+- `brain.md` — project architecture, conventions, decisions, recommended skills
+- `history.md` — append-only task execution log
+- `tasks.md` — active and recently completed task registry
+- `pending_setup.md` — deferred setup items (declined plugins/MCPs)
 
+**Read brain.md at the start of every Standard/Complex task** to check existing conventions and prior decisions before planning.
+
+---
+
+## Brain Analysis Phase (first session only)
+
+**Triggered automatically** when `session-start.py` injects the `[Orch] Brain skeleton ready` notice (i.e., `brain.md` has `llm_analysis: pending`).
+
+Before responding to any task in that session:
+
+1. Read the Key Files listed in `.claude/orch/brain.md`
+2. For each key file, briefly scan: component purpose, how it connects to others, naming patterns, test approach
+3. Write concise findings to brain.md:
+   - **Architecture section**: bullet-form component relationships and data flow
+   - **Conventions section**: naming style, file organisation, test patterns, code style
+4. Update the header: change `<!-- llm_analysis: pending -->` to `<!-- llm_analysis: complete -->`
+5. Confirm to the user: "Brain analysis complete. Project context saved to .claude/orch/brain.md."
+
+This phase runs **once per project**. On subsequent sessions, `llm_analysis: complete` means skip this phase entirely.
+
+To re-run: say "refresh brain" → runs `init_brain.py --force` and resets `llm_analysis: pending`.
+
+---
+
+## Tool Setup ("set up tools")
+
+**Triggered when** the user says "set up tools" (after `session-start.py` injects the setup gap notice).
+
+Read setup gap list:
 ```bash
-python scripts/discover_tools.py --project-path <project-root>
+python scripts/discover_tools.py --project-path <cwd> --json
 ```
+Also read `.claude/orch/pending_setup.md` if it exists (previously deferred items).
 
-Present the recommendations table to the user. After approval, install each:
+For each item **in order by priority** (required first, then recommended):
 
+**Plugin installation:**
 ```bash
 python scripts/install_plugin.py --plugin <name> --marketplace claude-plugins-official
 ```
+Report: "`<name>` installed ✓" or "`<name>` failed: <reason>".
 
-Required plugins: `superpowers` (core skills), `context7` (live docs).
+**MCP configuration:**
+1. Add the MCP entry to the project's `.mcp.json` (create if missing):
+   ```json
+   { "mcpServers": { "<name>": { "command": "<cmd>", "args": [...] } } }
+   ```
+2. If auth is required, output the exact command and pause:
+   ```
+   [Orch] MCP <name> added to config. Auth required — please run:
+   <exact auth command>
+   Then say "auth done" to continue setup.
+   ```
+   Wait for "auth done" before moving to the next item.
+
+**On decline** (user says "skip" or "not now" for a specific item):
+Append to `.claude/orch/pending_setup.md`:
+```markdown
+| <name> | <type> | <priority> | <today's date> | |
+```
+
+After all items processed (or skipped), confirm: "Setup complete. N tools installed."
+
+---
+
+## Deferred Setup ("skip setup" / resume)
+
+**"skip setup"** — Write all currently surfaced gaps to `.claude/orch/pending_setup.md`. Session continues without installing.
+
+**On next session** — `session-start.py` re-surfaces pending items via the setup gap notice. When the user says "set up tools", run the setup flow above starting from `pending_setup.md` items.
+
+**"dismiss setup"** — Remove all items from `pending_setup.md`. No further reminders until `discover_tools.py` surfaces new gaps.
 
 ---
 
@@ -86,9 +151,11 @@ For Standard and Complex, invoke `orch-planner` to create and manage session.md.
 ### Fresh start (no session.md)
 
 1. State phase detection — one line (fuzzy or concrete)
-2. Invoke `orch-planner` to write `.claude/session.md`
-3. Output the **Step 1 prompt** — copy-paste ready
-4. End with: *"When Step 1 is done, say 'step done' and I'll write Step 2."*
+2. Read `.claude/orch/brain.md` (if exists): note relevant conventions and prior decisions
+3. Check `.claude/orch/tasks.md` (if exists): note any active tasks that might conflict
+4. Invoke `orch-planner` to write `.claude/session.md`; add entry to `tasks.md` Active Tasks table
+5. Output the **Step 1 prompt** — copy-paste ready
+6. End with: *"When Step 1 is done, say 'step done' and I'll write Step 2."*
 
 ### Replan ("step done" signal)
 
@@ -181,3 +248,13 @@ If a phase has 2+ independent parts → suggest `dispatching-parallel-agents` + 
 - `references/setup.md` — auto-generated live setup (models, plugins, MCPs, tech stack)
 - `orch-planner` skill — session.md creation, step management, replan logic
 - `orch-monitor` skill — token budgeting, /compact timing, new session guidance
+
+### Commands
+
+| Command | What it does |
+|---------|-------------|
+| `set up tools` | Install missing plugins + configure MCPs interactively |
+| `skip setup` | Defer all setup items to pending_setup.md |
+| `dismiss setup` | Clear pending_setup.md permanently |
+| `refresh brain` | Force re-scan of project structure + reset llm_analysis to pending |
+| `resume session` | Load existing session.md and continue from [NEXT] step |
