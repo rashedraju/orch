@@ -83,7 +83,12 @@ When the user signals a step is complete ("step done", "that's finished", "move 
 5. Write the new `[NEXT]` step in full detail, informed by what was actually learned
 6. Update the next `[STUB]` to reflect updated understanding
 7. Update `last-updated` date
-8. Output the new `[NEXT]` prompt — copy-paste ready
+8. **Update brain.md** (if `.claude/orch/brain.md` exists): if the completed step created new files, discovered naming patterns, or made an architectural decision, append 1–3 concise bullets to the relevant section:
+   - New file or module → append to **Architecture**: `- [filename]: [one-line purpose]`
+   - Naming/style pattern found → append to **Conventions**: `- [pattern description]`
+   - Technical decision made → append to **Decisions Log**: `- [date] [decision]: [rationale]`
+   Keep each bullet under 80 characters. Skip this step if the completed step produced no new project-level insights.
+9. Output the new `[NEXT]` prompt — copy-paste ready
 
 **Cost:** ~300–500 tokens per replan. Keep it cheap by advancing exactly one step.
 
@@ -121,3 +126,12 @@ Every plan's final step:
 2. `finishing-a-development-branch` skill → cleanup, PR prep
 3. Commit via `commit-commands`
 4. Mark session.md `status: complete`
+5. **Update `.claude/orch/history.md`** (if it exists): append one entry:
+   ```markdown
+   ## <today's date> — <task name>
+   - Steps: <N> completed (<step names, comma-separated>)
+   - Outcome: <1–2 sentence summary of what was built/fixed>
+   - Skills used: <list>
+   - Lessons: <key discoveries or gotchas for future sessions>
+   ```
+6. **Update `.claude/orch/tasks.md`** (if it exists): move the task row from Active Tasks to Recently Completed. Keep only the 5 most recent completed entries (delete older ones).
