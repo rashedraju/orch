@@ -26,16 +26,6 @@ DISCOVER_SCRIPT = SKILL_DIR / "scripts" / "discover_tools.py"
 SETUP_MD = SKILL_DIR / "references" / "setup.md"
 
 
-def escape_for_json(text: str) -> str:
-    return (
-        text.replace("\\", "\\\\")
-            .replace('"', '\\"')
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t")
-    )
-
-
 def run_script(script: Path, args: list[str]) -> None:
     """Run a Python script silently. Never raises — failure is non-blocking."""
     try:
@@ -46,21 +36,6 @@ def run_script(script: Path, args: list[str]) -> None:
         )
     except Exception:
         pass
-
-
-def get_git_head(project_path: str) -> str | None:
-    """Return current git HEAD SHA."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=project_path,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        return result.stdout.strip() if result.returncode == 0 else None
-    except Exception:
-        return None
 
 
 def read_brain_head(brain_md: Path) -> str | None:
@@ -88,7 +63,7 @@ def get_missing_tools(project_path: str) -> list[dict]:
             ["python3", str(DISCOVER_SCRIPT), "--project-path", project_path, "--json"],
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=5,
         )
         if result.returncode != 0:
             return []
@@ -110,13 +85,17 @@ def read_pending_setup(cwd: str) -> list[dict]:
     try:
         items = []
         in_table = False
+        header_skipped = False
         for line in pending_md.read_text(encoding='utf-8').splitlines():
             if "## Pending Installation" in line:
                 in_table = True
                 continue
             if in_table and line.startswith("## "):
                 break
-            if in_table and line.startswith("|") and not line.startswith("| Item") and "---" not in line:
+            if in_table and line.startswith("|") and "---" not in line:
+                if not header_skipped:
+                    header_skipped = True
+                    continue
                 parts = [p.strip() for p in line.split("|")[1:-1]]
                 if len(parts) >= 2 and parts[0]:
                     items.append({
@@ -162,8 +141,10 @@ def read_brain_summary(cwd: str) -> str:
         decision_bullets: list[str] = []
         if decisions_match:
             raw = decisions_match.group(1).strip()
-            if raw and "<!--" not in raw:
-                decision_bullets = [l.strip() for l in raw.splitlines() if l.strip().startswith("-")][-3:]
+            decision_bullets = [
+                l.strip() for l in raw.splitlines()
+                if l.strip().startswith("-") and "<!--" not in l
+            ][-3:]
 
         parts = [f"Project: **{project_name}** | Stack: {tech_str} | Active tasks: {active_count}"]
         if decision_bullets:
@@ -216,14 +197,9 @@ def main() -> None:
     run_script(INIT_SCRIPT, ["--project-path", cwd])
 
     # Step 2: Brain initialization / git change detection
+    # init_brain.py handles its own HEAD check and exits quickly if up-to-date
     brain_md = Path(cwd) / ".claude" / "orch" / "brain.md"
-    if not brain_md.exists():
-        run_script(INIT_BRAIN_SCRIPT, ["--cwd", cwd])
-    else:
-        stored = read_brain_head(brain_md)
-        current = get_git_head(cwd)
-        if stored and current and stored != current:
-            run_script(INIT_BRAIN_SCRIPT, ["--cwd", cwd])
+    run_script(INIT_BRAIN_SCRIPT, ["--cwd", cwd])
 
     context_parts: list[str] = []
 
@@ -246,7 +222,7 @@ def main() -> None:
 
     if all_setup_items:
         items_str = ", ".join(
-            f"{item.get('plugin', item.get('name', '?'))} "
+            f"{item.get('plugin', '?')} "
             f"({item.get('type', 'plugin')}, {item.get('priority', 'recommended')})"
             for item in all_setup_items
         )
