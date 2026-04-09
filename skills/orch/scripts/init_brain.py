@@ -75,7 +75,7 @@ def get_git_head(project_path: Path) -> str | None:
 def read_brain_head(brain_md: Path) -> str | None:
     """Read the stored git_head value from brain.md comments."""
     try:
-        content = brain_md.read_text()
+        content = brain_md.read_text(encoding='utf-8')
         match = re.search(r"<!--\s*git_head:\s*([a-f0-9]+)\s*-->", content)
         return match.group(1) if match else None
     except Exception:
@@ -85,7 +85,7 @@ def read_brain_head(brain_md: Path) -> str | None:
 def read_llm_analysis_status(brain_md: Path) -> str:
     """Return 'pending', 'complete', or 'unknown'."""
     try:
-        content = brain_md.read_text()
+        content = brain_md.read_text(encoding='utf-8')
         match = re.search(r"<!--\s*llm_analysis:\s*(\w+)\s*-->", content)
         return match.group(1) if match else "unknown"
     except Exception:
@@ -113,11 +113,11 @@ def get_project_name(project_path: Path) -> str:
             continue
         try:
             if manifest == "package.json":
-                data = json.loads(f.read_text())
+                data = json.loads(f.read_text(encoding='utf-8'))
                 if data.get("name"):
                     return data["name"]
             else:
-                m = re.search(pattern, f.read_text())
+                m = re.search(pattern, f.read_text(encoding='utf-8'))
                 if m:
                     return m.group(1)
         except Exception:
@@ -132,7 +132,7 @@ def detect_tech_stack(project_path: Path) -> list[str]:
     pkg = project_path / "package.json"
     if pkg.exists():
         try:
-            data = json.loads(pkg.read_text())
+            data = json.loads(pkg.read_text(encoding='utf-8'))
             all_deps = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
             dep_names = set(all_deps.keys())
 
@@ -152,7 +152,7 @@ def detect_tech_stack(project_path: Path) -> list[str]:
 
     if (project_path / "composer.json").exists():
         try:
-            data = json.loads((project_path / "composer.json").read_text())
+            data = json.loads((project_path / "composer.json").read_text(encoding='utf-8'))
             requires = {**data.get("require", {}), **data.get("require-dev", {})}
             if any("laravel" in k.lower() for k in requires):
                 stack.append("PHP/Laravel")
@@ -320,17 +320,22 @@ def update_structural_sections(
     def replace_section(name: str, new_body: str) -> None:
         nonlocal content
         pattern = rf"(## {re.escape(name)}\n).*?(?=\n## |\Z)"
-        content = re.sub(
+        new_content = re.sub(
             pattern,
             lambda m: m.group(1) + new_body + "\n",
             content,
             flags=re.DOTALL,
         )
+        if new_content == content:
+            print(f"  Warning: section '## {name}' not found in brain.md — skipped", file=sys.stderr)
+        content = new_content
 
+    existing_desc_match = re.search(r'\*\*Description:\*\*\s*(.*)', existing_content)
+    existing_desc = existing_desc_match.group(1).strip() if existing_desc_match else "<!-- Fill in: one-line description of what this project does -->"
     replace_section(
         "Project Summary",
         f"**Name:** {project_name}\n"
-        f"**Description:** <!-- Fill in: one-line description of what this project does -->\n"
+        f"**Description:** {existing_desc}\n"
         f"**Primary Language:** {primary_lang}",
     )
     replace_section("Tech Stack", tech_str)
@@ -372,7 +377,8 @@ def main() -> None:
     if action == "create":
         brain_md.write_text(
             build_brain_skeleton(project_path, git_head, tech_stack, key_files,
-                                 dir_structure, file_dist, recommended_skills)
+                                 dir_structure, file_dist, recommended_skills),
+            encoding='utf-8',
         )
         print(f"✓ brain.md created at {brain_md}")
         print(f"  Tech stack: {', '.join(tech_stack) if tech_stack else 'none detected'}")
@@ -380,9 +386,10 @@ def main() -> None:
         print(f"  llm_analysis: pending")
     else:
         brain_md.write_text(
-            update_structural_sections(brain_md.read_text(), project_path, git_head,
+            update_structural_sections(brain_md.read_text(encoding='utf-8'), project_path, git_head,
                                        tech_stack, key_files, dir_structure,
-                                       file_dist, recommended_skills)
+                                       file_dist, recommended_skills),
+            encoding='utf-8',
         )
         print(f"✓ brain.md structural sections refreshed at {brain_md}")
         print(f"  Tech stack: {', '.join(tech_stack) if tech_stack else 'none detected'}")

@@ -149,6 +149,39 @@ class TestUpdateStructuralSections(unittest.TestCase):
         # llm_analysis flag preserved (not changed by structural scan)
         assert "<!-- llm_analysis: complete -->" in updated
 
+    def test_preserves_user_edited_description(self):
+        original = (
+            "# Project Brain\n"
+            "<!-- git_head: old123 -->\n"
+            "<!-- last_scan: 2025-01-01 -->\n"
+            "<!-- llm_analysis: pending -->\n\n"
+            "## Project Summary\n"
+            "**Name:** my-project\n"
+            "**Description:** A web app for task management\n"
+            "**Primary Language:** Python\n\n"
+            "## Tech Stack\nPython\n\n"
+            "## Key Files\n- main.py\n\n"
+            "## File Distribution\n- .py: 5\n\n"
+            "## Directory Map\n```\nmain.py\n```\n\n"
+            "## Architecture\n<!-- notes -->\n\n"
+            "## Conventions\n<!-- notes -->\n\n"
+            "## Decisions Log\n<!-- notes -->\n\n"
+            "## Open Questions\n\n"
+            "## Recommended Skills\n- `superpowers`\n"
+        )
+        updated = init_brain.update_structural_sections(
+            existing_content=original,
+            project_path=Path("/tmp/proj"),
+            git_head="new456",
+            tech_stack=["Python"],
+            key_files=["main.py"],
+            dir_structure="main.py",
+            file_dist={".py": 10},
+            recommended_skills=["superpowers"],
+        )
+        # User-edited Description must survive the structural update
+        assert "**Description:** A web app for task management" in updated
+
 
 if __name__ == "__main__":
     unittest.main()
