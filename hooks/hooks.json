@@ -2,30 +2,46 @@
   "hooks": {
     "SessionStart": [
       {
-        "type": "command",
-        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.py\"",
-        "async": false
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.py\"",
+            "async": false
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
       {
-        "type": "command",
-        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/prompt-submit.py\"",
-        "async": true
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/prompt-submit.py\"",
+            "async": true
+          }
+        ]
       }
     ],
     "Stop": [
       {
-        "type": "command",
-        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.py\"",
-        "async": true
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.py\"",
+            "async": true
+          }
+        ]
       }
     ],
     "PreCompact": [
       {
-        "type": "command",
-        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact.py\"",
-        "async": false
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact.py\"",
+            "async": false
+          }
+        ]
       }
     ]
   }
