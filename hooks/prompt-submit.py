@@ -125,6 +125,58 @@ def format_gap_notice(gaps: list[dict]) -> str:
     return "\n\n".join(lines)
 
 
+def read_brain_context(cwd: str) -> dict | None:
+    """Read brain.md and return project context dict, or None if brain doesn't exist."""
+    brain_md = Path(cwd) / ".claude" / "orch" / "brain.md"
+    if not brain_md.exists():
+        return None
+    try:
+        import re as _re
+        content = brain_md.read_text(encoding='utf-8')
+
+        name_match = _re.search(r"\*\*Name:\*\*\s*(.+)", content)
+        project_name = name_match.group(1).strip() if name_match else Path(cwd).name
+
+        stack_match = _re.search(r"## Tech Stack\n([^\n#]+)", content)
+        tech_str = stack_match.group(1).strip() if stack_match else "unknown"
+
+        # Up to 3 context bullets from Decisions Log or Conventions
+        bullets: list[str] = []
+        for section in ("Decisions Log", "Conventions"):
+            sec_match = _re.search(rf"## {section}\n(.*?)(?=\n## |\Z)", content, _re.DOTALL)
+            if sec_match:
+                raw = sec_match.group(1).strip()
+                if raw:
+                    for line in raw.splitlines():
+                        if line.strip().startswith("-") and "<!--" not in line and len(bullets) < 3:
+                            bullets.append(line.strip())
+
+        return {"name": project_name, "stack": tech_str, "bullets": bullets}
+    except Exception:
+        return None
+
+
+def get_active_task_count(cwd: str) -> int:
+    """Count active tasks from .claude/orch/tasks.md."""
+    tasks_md = Path(cwd) / ".claude" / "orch" / "tasks.md"
+    if not tasks_md.exists():
+        return 0
+    try:
+        count = 0
+        in_active = False
+        for line in tasks_md.read_text(encoding='utf-8').splitlines():
+            if "## Active Tasks" in line:
+                in_active = True
+                continue
+            if in_active and line.startswith("## "):
+                break
+            if in_active and line.startswith("|") and not line.startswith("| Task") and "---" not in line:
+                count += 1
+        return count
+    except Exception:
+        return 0
+
+
 def is_fuzzy(prompt: str) -> bool:
     lower = prompt.lower().strip()
     # Very short and vague
@@ -180,7 +232,28 @@ def main():
 
     notes = []
 
-    # Check for active plan
+    # Inject project context + complexity gate routing (when brain exists)
+    brain_ctx = read_brain_context(cwd)
+    if brain_ctx:
+        active_tasks = get_active_task_count(cwd)
+        header = (
+            f"[ORCH] Project: {brain_ctx['name']} | "
+            f"Stack: {brain_ctx['stack']} | "
+            f"Active tasks: {active_tasks}"
+        )
+        bullets_str = ""
+        if brain_ctx["bullets"]:
+            bullets_str = "\nContext: " + " | ".join(brain_ctx["bullets"])
+
+        routing = (
+            "\n\nFor any implementation task, classify before responding:\n"
+            "- Quick (≤2 steps, single file): answer directly\n"
+            "- Standard/Complex: create/update .claude/session.md, route to appropriate skills\n"
+            "Consult .claude/orch/brain.md for project conventions and prior decisions."
+        )
+        notes.append(header + bullets_str + routing)
+
+    # Check for active plan (existing behaviour)
     active_step = get_active_plan_step(cwd)
     if active_step:
         notes.append(
@@ -188,15 +261,14 @@ def main():
             "Say 'resume session' to pick up where you left off, or continue with your new prompt."
         )
 
-    # Check for fuzzy prompt
+    # Check for fuzzy prompt (existing behaviour)
     if prompt and is_fuzzy(prompt) and not active_step:
         notes.append(
             "[Orch.] This looks like a vague prompt. "
-            "For best results, try: \"Use orch to plan this: " + prompt + "\""
+            'For best results, try: "Use orch to plan this: ' + prompt + '"'
         )
 
-    # Check for skill gaps (skip if config unreadable — avoids false positives)
-    # When skill config is readable, gap detection supersedes the fuzzy nudge
+    # Check for skill gaps (existing behaviour)
     if prompt and not active_step:
         enabled_skills = get_enabled_skill_names()
         if enabled_skills is not None:
