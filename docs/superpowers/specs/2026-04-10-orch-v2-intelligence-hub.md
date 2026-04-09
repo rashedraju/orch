@@ -1,7 +1,7 @@
 # Orch v2 — Intelligence Hub + Universal Routing
 
 **Date:** 2026-04-10
-**Status:** Approved
+**Status:** Approved (rev 2 — 2026-04-10)
 
 ---
 
@@ -21,10 +21,10 @@ This spec adds three coordinated subsystems that give Orch persistent memory and
 
 | File | Action |
 |------|--------|
-| `skills/orch/scripts/init_brain.py` | Create — codebase scanner, writes brain.md skeleton |
-| `hooks/session-start.py` | Modify — add brain init, git change detection, tool recommendation |
-| `hooks/prompt-submit.py` | Modify — add project context injection + complexity gate instruction |
-| `skills/orch/SKILL.md` | Modify — tasks.md management, install flow, refresh brain command |
+| `skills/orch/scripts/init_brain.py` | Create — structural codebase scanner, writes brain.md skeleton |
+| `hooks/session-start.py` | Modify — brain init, git change detection, LLM analysis trigger, setup gaps |
+| `hooks/prompt-submit.py` | Modify — project context injection + complexity gate instruction |
+| `skills/orch/SKILL.md` | Modify — LLM analysis phase, interactive setup (plugins + MCPs + auth), tasks.md |
 | `skills/orch-planner/SKILL.md` | Modify — brain.md + history.md updates after task steps |
 
 Nothing else changes. The existing `init_setup.py`, `discover_tools.py`, `install_plugin.py`, hooks structure, and skill format are all preserved.
@@ -35,20 +35,21 @@ Nothing else changes. The existing `init_setup.py`, `discover_tools.py`, `instal
 
 ### File Structure
 
-Three files live at `.claude/orch/` **in the user's project root** (not in the Orch plugin directory):
+Four files live at `.claude/orch/` **in the user's project root** (not in the Orch plugin directory):
 
 ```
 <project-root>/
 └── .claude/
     └── orch/
-        ├── brain.md     ← Project brain: decisions, patterns, conventions, architecture
-        ├── history.md   ← Execution log: one entry per completed task (append-only)
-        └── tasks.md     ← Task registry: active + recently completed tasks
+        ├── brain.md          ← Project brain: decisions, patterns, conventions, architecture
+        ├── history.md        ← Execution log: one entry per completed task (append-only)
+        ├── tasks.md          ← Task registry: active + recently completed tasks
+        └── pending_setup.md  ← Deferred setup items (declined plugins/MCPs, pending auth)
 ```
 
 ### `brain.md` — Project Brain
 
-**Created by:** `init_brain.py` (skeleton with auto-filled structural sections)
+**Created by:** `init_brain.py` (structural skeleton) + `orch` skill (LLM analysis phase, first session only)
 **Enriched by:** `orch-planner` skill (appends discoveries after each completed step)
 **Read by:** `session-start.py` hook (summary injection), `prompt-submit.py` hook (context + routing), `orch` skill (conventions + prior decisions)
 
@@ -58,6 +59,7 @@ Format:
 # Project Brain
 <!-- git_head: <sha> -->
 <!-- last_scan: <ISO date> -->
+<!-- llm_analysis: pending | complete -->
 
 ## Project Summary
 <name, one-line description, primary language>
@@ -72,10 +74,10 @@ Format:
 <top-2-level structure, auto-generated>
 
 ## Architecture
-<!-- Filled in by orch-planner as tasks complete -->
+<!-- LLM-populated on first session: component relationships, data flow, key patterns -->
 
 ## Conventions
-<!-- Filled in by orch-planner as patterns are discovered -->
+<!-- LLM-populated on first session: naming, file organization, test style, code style -->
 
 ## Decisions Log
 <!-- Appended by orch-planner: date, decision, rationale -->
@@ -89,7 +91,9 @@ Format:
 
 **Key invariants:**
 - The `<!-- git_head: ... -->` comment is updated by every structural scan
-- Knowledge sections (Architecture, Conventions, Decisions Log) are **never overwritten** by structural re-scans — only appended to
+- The `<!-- llm_analysis: ... -->` flag tracks whether LLM analysis has run (pending → complete, once)
+- Structural sections (Project Summary through Directory Map) are overwritten by `init_brain.py` on git changes
+- Knowledge sections (Architecture, Conventions, Decisions Log) are **never overwritten** — only appended to
 - `brain.md` is never deleted; it accumulates knowledge indefinitely
 
 ### `history.md` — Execution Log
@@ -132,6 +136,30 @@ Format:
 | Fix pagination bug | 2026-04-09 | Resolved — off-by-one in cursor calculation |
 ```
 
+### `pending_setup.md` — Deferred Setup Items
+
+**Created/updated by:** `orch` skill when user declines setup or auth is incomplete
+**Read by:** `session-start.py` hook + `orch` skill on invocation
+
+Format:
+
+```markdown
+# Pending Setup
+
+## Pending Installation
+| Item | Type | Priority | Declined At | Notes |
+|------|------|----------|-------------|-------|
+| context7 | plugin | required | 2026-04-10 | |
+| sequential-thinking | mcp | recommended | 2026-04-10 | auth required |
+
+## Auth Incomplete
+| Item | Type | Auth Step | Last Attempted |
+|------|------|-----------|----------------|
+| sequential-thinking | mcp | Run: npx @modelcontextprotocol/... | 2026-04-10 |
+```
+
+Items are removed from `pending_setup.md` once successfully installed or explicitly dismissed by the user.
+
 ---
 
 ## Subsystem B: Enhanced Initialization
@@ -149,12 +177,12 @@ A fast Python script (stdlib only, no external packages, no LLM calls) that crea
 - Tech stack inference (same logic as `init_setup.py`)
 
 **Behavior:**
-- If `brain.md` does not exist: creates full skeleton, fills structural sections, leaves knowledge sections as placeholders
-- If `brain.md` exists and git HEAD changed: updates only the structural sections (Project Summary, Tech Stack, Key Files, Directory Map, Recommended Skills); all other sections left intact
+- If `brain.md` does not exist: creates full skeleton, fills structural sections, leaves knowledge sections as placeholders, sets `llm_analysis: pending`
+- If `brain.md` exists and git HEAD changed: updates only the structural sections (Project Summary, Tech Stack, Key Files, Directory Map, Recommended Skills); all other sections and the `llm_analysis` flag left intact
 - If `brain.md` exists and git HEAD unchanged: exits immediately (no-op)
 - `--force` flag: always re-runs the structural scan regardless of HEAD state
 
-**Output:** Updates `brain.md` with the stored `git_head` comment set to current HEAD.
+**Output:** Updates `brain.md` with `git_head` comment set to current HEAD. Does NOT change `llm_analysis` flag.
 
 **CLI:**
 ```bash
@@ -181,13 +209,27 @@ elif git_head_changed(brain_md):
 
 Git HEAD comparison: reads `<!-- git_head: ... -->` from `brain.md`, compares to `git rev-parse HEAD`.
 
-**New step 2: Tool gap recommendation**
+**New step 2: LLM analysis trigger**
 
-Runs `discover_tools.py --json`, filters for status `not_installed` with priority `required` or `recommended`. If any found:
+Reads `brain.md`. If `llm_analysis: pending`:
 
-Injects: `[Orch] Recommended tools not installed: superpowers, context7. Say "install recommended tools" to proceed.`
+Injects: `[Orch] Brain skeleton ready. Before responding to the first task, analyze the project source files listed in Key Files and populate the Architecture and Conventions sections of .claude/orch/brain.md. Mark llm_analysis as complete when done.`
 
-**New step 3: Brain summary injection**
+This is injected once (first session) and cleared after the orch skill completes the analysis.
+
+**New step 3: Setup gap detection**
+
+Runs `discover_tools.py --json` to find missing tools. Also reads `pending_setup.md` (if exists) for deferred items.
+
+If any unresolved setup items exist (new gaps OR pending from previous session):
+
+Injects:
+```
+[Orch] Setup incomplete. Pending: context7 (plugin, required), sequential-thinking (mcp, recommended).
+Say "set up tools" to install and configure them now, or "skip setup" to defer.
+```
+
+**New step 4: Brain summary injection**
 
 Reads `brain.md` and injects a compact summary into context:
 - Project name + one-line description (from Project Summary)
@@ -225,16 +267,41 @@ This block is injected **on every prompt** when the brain exists — making Orch
 
 ### Enhanced: `skills/orch/SKILL.md`
 
-Three new behaviors added to the orch skill:
+Five new behaviors added to the orch skill:
+
+**LLM analysis phase (first session, automatic):**
+Triggered when `session-start.py` injects the analysis instruction (i.e., `llm_analysis: pending`). Before responding to any task:
+1. Read the Key Files listed in brain.md (entry points, main modules, config)
+2. Analyze: component relationships, data flow patterns, naming conventions, test patterns, coding style
+3. Write findings to brain.md Architecture and Conventions sections (concise, bullet form)
+4. Set `<!-- llm_analysis: complete -->` in brain.md header
+This runs once per project and is never triggered again unless `--force`.
+
+**On "set up tools":**
+Read setup gap list (from `discover_tools.py --json` + `pending_setup.md`). For each item, in order by priority:
+
+- **Plugin**: call `install_plugin.py --plugin <name> --marketplace claude-plugins-official`. Report success/failure.
+- **MCP**: write entry to `.mcp.json` (project-level) or `~/.claude/settings.json` (global). If auth is required, output the exact auth command and prompt the user to run it:
+  ```
+  [Orch] MCP <name> added to config. Auth required — please run:
+  <auth command>
+  Then say "auth done" to continue setup.
+  ```
+  Wait for "auth done" before proceeding to next item.
+- **On decline**: write declined items to `pending_setup.md` with current timestamp.
+
+**On "skip setup":**
+Write all currently surfaced gaps to `pending_setup.md`. Session continues without installing.
+
+**On next session / orch invocation with pending_setup.md items:**
+If `pending_setup.md` is non-empty and session-start injects the pending notice, offer to resume:
+`[Orch] You have N deferred setup items. Say "set up tools" to resume, or "dismiss setup" to clear the list.`
 
 **On new Standard/Complex task:**
 Before writing `session.md`, read `brain.md` (conventions, decisions log). Check `tasks.md` for active tasks that might conflict or relate. Write new entry to `tasks.md` Active Tasks table.
 
-**On "install recommended tools":**
-Read `discover_tools.py` output (or re-run it). For each missing required/recommended tool, call `install_plugin.py --plugin <name> --marketplace claude-plugins-official`. Report what was installed.
-
 **On "refresh brain":**
-Run `init_brain.py --force`. Report which sections were updated.
+Run `init_brain.py --force`, then trigger LLM analysis phase again (sets `llm_analysis: pending`, re-populates Architecture/Conventions from scratch).
 
 ### Enhanced: `skills/orch-planner/SKILL.md`
 
@@ -255,22 +322,23 @@ When a user installs Orch and starts their first session in a project:
 
 1. `SessionStart` hook fires
 2. `init_setup.py` runs (env scan → `setup.md`) — existing behavior
-3. `init_brain.py` runs (codebase scan → `.claude/orch/brain.md`) — new
-4. `discover_tools.py` runs → if gaps, injects recommendation — new
-5. Hook injects: setup summary + brain summary
-6. First prompt triggers routing context injection from `prompt-submit.py`
-7. User gets full Orch intelligence without invoking `/orch`
+3. `init_brain.py` runs (codebase scan → `.claude/orch/brain.md` skeleton, `llm_analysis: pending`) — new
+4. Hook injects LLM analysis instruction (because `llm_analysis: pending`)
+5. `discover_tools.py` runs → if gaps, injects setup notice — new
+6. Hook injects: setup summary + brain summary
+7. Claude's first action: LLM analysis of key source files → populates Architecture + Conventions, sets `llm_analysis: complete`
+8. User says "set up tools" → orch skill installs plugins + MCPs one-by-one (with auth prompting if needed)
+9. All subsequent prompts get full project context + complexity gate from `prompt-submit.py`
 
-On subsequent sessions: step 3 is skipped if no git changes; brain summary is injected immediately from existing file.
+On subsequent sessions: steps 3-4 skipped (brain exists, HEAD unchanged); brain summary injected immediately; pending setup items resurfaced if any.
 
 ---
 
 ## Out of Scope
 
-- LLM-based codebase analysis (brain.md knowledge sections are filled by Claude via skills, not by scripts)
 - Multi-user or team-shared brains (brain.md is local to the developer's project root)
-- Automatic MCP installation (MCPs require auth setup — only plugins are auto-installable)
 - Cross-project brain sharing or templates
+- MCP auth flows that require a browser (OAuth-based MCPs — only CLI-auth MCPs are handled interactively)
 
 ---
 
@@ -278,9 +346,11 @@ On subsequent sessions: step 3 is skipped if no git changes; brain summary is in
 
 After implementing:
 
-1. Fresh project: start a Claude Code session → `.claude/orch/brain.md` created with directory map + detected stack
-2. Pull new commits: start next session → brain structural sections refreshed automatically, knowledge sections intact
-3. Submit any task prompt (no `/orch` invoked): hook injects `[ORCH]` context block + complexity gate instruction
-4. Complete a task via `orch-planner`: `history.md` appended, `tasks.md` updated
-5. Start new session in same project: brain summary injected at session start, no codebase re-scanning
-6. Run `discover_tools.py` in a project missing `superpowers`: session-start injects install recommendation
+1. Fresh project: start session → `brain.md` created with structural skeleton, `llm_analysis: pending`
+2. First session: Claude reads key files → populates Architecture + Conventions → sets `llm_analysis: complete`
+3. Session-start injects setup gap list → user says "set up tools" → plugins installed, MCPs configured, auth prompted if needed
+4. User declines one MCP → written to `pending_setup.md` → next session resurfaces it
+5. Pull new commits: start next session → brain structural sections auto-refreshed, knowledge sections intact
+6. Submit any task prompt (no `/orch` invoked): hook injects `[ORCH]` context block + complexity gate
+7. Complete a task via `orch-planner`: `history.md` appended, `tasks.md` updated
+8. Start new session: brain summary injected immediately, no codebase re-scan, LLM analysis not re-triggered
